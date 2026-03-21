@@ -1,30 +1,25 @@
-from scapy.all import sniff, IP, TCP, UDP, ICMP
+import joblib
+from scapy.all import sniff, IP
+
+# Load the trained model
+try:
+    model = joblib.load('sniffer_model.pkl')
+    print("AI Model Loaded Successfully.")
+except:
+    print("No model found. Run training script first.")
+    model = None
 
 def packet_callback(packet):
-    # Check if the packet has an IP layer
-    if packet.haslayer(IP):
-        src_ip = packet[IP].src
-        dst_ip = packet[IP].dst
-        proto = packet[IP].proto
+    if packet.haslayer(IP) and model:
+        p_len = len(packet)
+        p_proto = packet[IP].proto
+        
+        # Predict: 1 = Normal, -1 = Anomaly
+        prediction = model.predict([[p_len, p_proto]])
+        
+        if prediction[0] == -1:
+            print(f"[!!! AI ALERT !!!] Anomaly Detected! IP: {packet[IP].src} | Size: {p_len}")
+        else:
+            print(f"[Normal] {packet[IP].src} -> {packet[IP].dst}")
 
-        # Identify Protocol Name
-        proto_name = "Other"
-        if proto == 6: proto_name = "TCP"
-        elif proto == 17: proto_name = "UDP"
-        elif proto == 1: proto_name = "ICMP"
-
-        print(f"[{proto_name}] {src_ip} -> {dst_ip}")
-
-        # Basic Security Logic: Detect potential "Ping Sweep"
-        if packet.haslayer(ICMP):
-            print(f"  [!] ALERT: ICMP (Ping) detected from {src_ip}")
-
-def main():
-    print("--- Sentinel Network Sniffer Active ---")
-    print("Press Ctrl+C to stop...")
-    # sniff() runs a loop capturing packets. 
-    # store=0 means we don't keep them in RAM (prevents crashes).
-    sniff(prn=packet_callback, store=0)
-
-if __name__ == "__main__":
-    main()
+sniff(prn=packet_callback, store=0)

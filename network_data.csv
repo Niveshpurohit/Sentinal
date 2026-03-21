@@ -1,0 +1,26 @@
+import pandas as pd
+from sklearn.ensemble import IsolationForest
+import joblib # For saving the model
+
+def train_model(csv_file):
+    # 1. Load the data captured by your sniffer
+    df = pd.read_csv(csv_file)
+    
+    # 2. Select Features (Length and Protocol are basic, but effective)
+    # Protocol numbers: 6=TCP, 17=UDP, 1=ICMP
+    X = df[['len', 'proto']]
+    
+    # 3. Initialize Isolation Forest
+    # 'contamination' is the expected % of outliers (attacks)
+    model = IsolationForest(n_estimators=100, contamination=0.03, random_state=42)
+    
+    # 4. Train (Fit) the model
+    print("Training AI model on network patterns...")
+    model.fit(X)
+    
+    # 5. Save the model to use it in your live sniffer later
+    joblib.dump(model, 'sniffer_model.pkl')
+    print("Model saved as 'sniffer_model.pkl'")
+
+if __name__ == "__main__":
+    train_model('network_data.csv')
